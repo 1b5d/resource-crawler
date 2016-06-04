@@ -26,4 +26,4 @@ class Parser(object):
 
         for tag, attr in Parser.attrs.iteritems():
             for link in soup.find_all(tag, {attr: True}):
-                yield Link(link[attr], Link.TYPE_RESOURCE)
+                yield Link(link[attr], Link.TYPE_RESOURCE, tag)

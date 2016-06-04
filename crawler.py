@@ -1,7 +1,6 @@
 from crawler_exceptions import ParserNotSetException, CrawlerRuntimeError
 from parser import Parser
 from link import Link
-from threading import Thread
 from Queue import Queue, Empty
 import utils
 import urllib3
@@ -10,10 +9,11 @@ import workerpool
 urllib3.disable_warnings()
 
 
-class Crawler(Thread):
-    def __init__(self, seed_urls, domains, num_threads=8, parser=Parser()):
+class Crawler(object):
+    def __init__(self, seed_urls, domains, num_threads=8, parser=Parser(), verbose=False):
         super(Crawler, self).__init__()
         self.seed_urls = seed_urls
+        self.verbose = verbose
         self.domains = domains
         self.parser = parser
         self.links = {}
@@ -22,11 +22,6 @@ class Crawler(Thread):
         self.connection_pool = urllib3.PoolManager(
             maxsize=max(int(num_threads * 0.9), 1)
         )
-        # add seed urls to the processing queue
-        for seed_url in seed_urls:
-            key_url = utils.strip_http(seed_url)
-            self.links[key_url] = Link(seed_url)
-            self.queue.put(self.links[key_url])
 
     def fetch_page(self, link):
         if link is None or link.link is None:
@@ -40,7 +35,8 @@ class Crawler(Thread):
             r = self.connection_pool.request('GET', link.link)
             content = r.data
         except Exception:
-            print 'Link %s was broken' % link.link
+            if self.verbose:
+                print 'Link %s was broken' % link.link
         return content
 
     def parse_page(self, link, content):
@@ -48,7 +44,7 @@ class Crawler(Thread):
             raise ParserNotSetException()
         content_links = self.parser.parse(content)
         for content_link in content_links:
-            content_link.parent = link.link
+            content_link.parent = link
 
             if utils.get_url_domain(content_link.link) not in self.domains:
                 continue
@@ -78,7 +74,8 @@ class Crawler(Thread):
                 link = self.queue.get(block=True, timeout=10)
             except Empty:
                 return
-            print 'Got URL: %s' % link.link
+            if self.verbose:
+                print 'Got URL: %s' % link.link
             try:
                 self.process_page(link)
             except Exception, e:
@@ -86,8 +83,14 @@ class Crawler(Thread):
                     'An error occurred while processing page %s,'
                     ' inner error: [%s]' % (link.link, e.message))
 
-    def run(self):
+    def start(self):
         self.links = {}
+        # add seed urls to the processing queue
+        for seed_url in self.seed_urls:
+            key_url = utils.strip_http(seed_url)
+            self.links[key_url] = Link(seed_url)
+            self.queue.put(self.links[key_url])
+
         self.pool.map(self.consume_pages, range(1, self.pool.size() + 1))
         self.pool.join()
         self.pool.shutdown()
