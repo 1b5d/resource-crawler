@@ -1,4 +1,0 @@
-
-
-class ParserNotSetException(Exception):
-    pass
