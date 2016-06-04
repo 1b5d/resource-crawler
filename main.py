@@ -8,7 +8,7 @@ if __name__ == '__main__':
     start = time.time()
 
     # initialize the crawler
-    crawler = Crawler(['http://gocardless.com'], ['gocardless.com'], 20, verbose=True)
+    crawler = Crawler(['http://example.com'], ['example.com'], 20, verbose=True)
     try:
         # run the crawler
         crawler.start()
