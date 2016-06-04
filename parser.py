@@ -1,8 +1,15 @@
+"""
+module that contains parsers used by the crawler.
+"""
+
 from bs4 import BeautifulSoup
 from link import Link
 
 
 class Parser(object):
+    """
+    Class Parser that represents a parser to be used by the crawler class.
+    """
 
     attrs = {
         'img': 'src',
@@ -18,6 +25,12 @@ class Parser(object):
 
     @staticmethod
     def parse(content):
+        """
+        parse contents and extract different types of links in it.
+
+        :param str content: content of the parsed page.
+        :return: a generator of Link objects.
+        """
         soup = BeautifulSoup(content)
 
         # extract `a` links
