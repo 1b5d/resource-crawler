@@ -2,9 +2,6 @@ from bs4 import BeautifulSoup
 
 
 class Parser(object):
-    def __init__(self):
-        pass
-
     @staticmethod
     def parse(content):
         soup = BeautifulSoup(content)

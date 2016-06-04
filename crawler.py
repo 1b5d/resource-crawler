@@ -1,41 +1,35 @@
 from chess_exceptions import ParserNotSetException
 from parser import Parser
+from thread_pool import ThreadPool
 from link import Link
+from threading import Thread
 import urllib2
 import urlparse
-from Queue import Queue
-from multiprocessing.dummy import Pool as ThreadPool
-import threading
 
 
-class Crawler(threading.Thread):
+class Crawler(Thread):
     def __init__(self, seed_urls, domains, parser=Parser()):
         super(Crawler, self).__init__()
-
         self.seed_urls = seed_urls
         self.domains = domains
         self.parser = parser
-        self.links = []
+        self.links = {}
         self.pool = ThreadPool(4)
 
         for seed_url in seed_urls:
-            self.links.append(Link(seed_url))
+            self.links[seed_url] = Link(seed_url)
 
     @staticmethod
     def fetch_page(link):
+        print 'Downloading URL: ' + link.link
         url = link.link
         if link is None or link.link is None:
             return None
         if len(link.link.strip()) == 0:
             return None
-        if link.parent is not None:
-            url = urlparse.urljoin(link.parent, url)
-        if not url.startswith('http'):
-            url = 'http://' + url
         try:
             response = urllib2.urlopen(url)
         except Exception, e:
-            print "ERROR: " + e.message
             return None
         return response.read()
 
@@ -44,21 +38,30 @@ class Crawler(threading.Thread):
             raise ParserNotSetException
         content_links = self.parser.parse(content)
         for content_link in content_links:
-            if content_link in self.links:
+            url = urlparse.urljoin(link.link, content_link)
+            if not url.startswith('http'):
+                url = 'http://' + url
+            parsed_url = urlparse.urlparse(url)
+            if parsed_url.netloc not in self.domains:
                 continue
-            print "added link " + content_link
-            self.links.append(Link(content_link, link))
+            if self.links.get(url) is not None:
+                continue
+            self.links[url] = Link(url, link)
+            # self.pool.add_task(self.process_page, Link(url, link))
+            self.process_page(Link(url, link))
 
     def process_page(self, link):
-        print "fetching page " + link.link
+        print 'Processing URL: ' + link.link
         content = self.fetch_page(link)
         if content is None:
             return
-        print "got page " + link.link
         self.parse_page(link, content)
+        return
 
     def run(self):
-        self.pool.map(self.process_page, self.links, None)
-        self.pool.close()
-        self.pool.join()
+        for link in self.links.values():
+            # self.pool.add_task(self.process_page, link)
+            self.process_page(link)
+        self.pool.wait_completion()
         return
+
