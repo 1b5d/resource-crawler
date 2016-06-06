@@ -24,7 +24,7 @@ urllib3 thread-safe lib is used to fetch the links from the original website, an
 You can use the crawler class by initializing it, for example in a `main.py` file:
 
 ```python
-crawler = Crawler(seed_urls=['http://gocardless.com'], domains=['gocardless.com'], num_threads=20, verbose=True)
+crawler = Crawler(seed_urls=['http://example.com'], domains=['example.com'], num_threads=20, verbose=True)
 ```
 
 Then you can start the crawler by simply running `start()` method:
